@@ -1,0 +1,184 @@
+const myersDiff = require('./myersDiff');
+const typeFunctions = require('./typeFunctions');
+
+const ActionValueCompleteInsertion  = "fullIns";
+const ActionValueCompleteDeletion  = "fullDel";
+const ActionValueInsertion = "ins";
+const ActionValueDeletion  = "del";
+
+const ErrorDiffInvalid = "diff data invalid";
+
+function changeStruct(action, pos, val) {
+    return {
+        action: action || '',
+        pos: pos || 0,
+        val: val || ''
+    };
+}
+
+function patchStruct(val, error) {
+    return {
+        orignalVal: val,
+        error: error
+    };
+}
+
+function mayersDiff(originalVar, changedVar) {
+    var myersDiffInstance = new myersDiff(originalVar, changedVar);
+    const fullDiffPath = myersDiffInstance.diffPath();
+    const allChanges = [];
+    for (let i = 0; i < fullDiffPath.length; i++) {
+        const path = fullDiffPath[i];
+        if (path.from.x === path.to.x) {
+            allChanges.push(
+                changeStruct(ActionValueInsertion, path.from.y, changedVar[path.from.y])
+            );
+        } else if (path.from.y === path.to.y) {
+            allChanges.push(
+                changeStruct(ActionValueDeletion, path.from.x, originalVar[path.from.x])
+            );
+        }
+    }
+    return allChanges;
+}
+
+function mayersPatch(changedVal, changes, isString) {
+    if (!(changes && changes.length)) {
+        return patchStruct(changedVal, '');
+    }
+    if (isString) {
+        changedVal = changedVal.split(" ");
+    }
+    let numberOfInsertions = 0;
+    let numberOfDeletions = 0;
+    const insertionsPositionMap = {};
+    for (let i = 0; i < changes.length; i++) {
+        const change = changes[i];
+        if (change.action === ActionValueInsertion) {
+            numberOfInsertions++;
+            insertionsPositionMap[change.pos] = true;
+            if (change.pos >= changedVal.length || changedVal[change.pos] !== change.val) {
+                console.log("5");
+                console.log(change);
+                console.log(changedVal);
+
+                return patchStruct([], ErrorDiffInvalid);
+            }
+        } else {
+            numberOfDeletions++;
+        }
+    }
+    const originalValLen = changedVal.length - numberOfInsertions + numberOfDeletions;
+    let originalVal = new Array(originalValLen);
+    for (let i = 0; i < changes.length; i++) {
+        const change = changes[i];
+        if (change.action === ActionValueDeletion) {
+            if (change.pos >= originalValLen) {
+                console.log("6");
+                return patchStruct([], ErrorDiffInvalid);
+            }
+            originalVal[change.pos] = change.val;
+        }
+    }
+    let originalValIndex = 0;
+    for (let changedValIndex = 0; changedValIndex < changedVal.length; changedValIndex++) {
+        if (insertionsPositionMap[changedValIndex]) {
+            continue;
+        }
+        while (originalVal[originalValIndex] !== undefined) {
+            originalValIndex++;
+        }
+        originalVal[originalValIndex] = changedVal[changedValIndex];
+        originalValIndex++;
+    }
+    if (isString) {
+        originalVal = originalVal.join(" ");
+    }
+    return patchStruct(originalVal, '');
+}
+
+function consolidateDiff(changes, isString) {
+    const consolidatedChanges = [];
+    for (let i = 0; i < changes.length; i++) {
+        const currentAction = changes[i].action;
+        const initialPosition = changes[i].pos;
+        let posIterator = changes[i].pos;
+        const valChangesArr = [changes[i].val];
+        while (i < changes.length - 1 && currentAction === changes[i + 1].action && posIterator + 1 === changes[i + 1].pos) {
+            valChangesArr.push(changes[i + 1].val);
+            i++;
+            posIterator++;
+        }
+        let finalValue = !isString ? valChangesArr : valChangesArr.join(" ");
+        consolidatedChanges.push(
+            changeStruct(currentAction, initialPosition, finalValue)
+        );
+    }
+    return consolidatedChanges;
+}
+
+function expandDiff(consolidatedChanges, isString) {
+    const changes = [];
+    for (let i = 0; i < consolidatedChanges.length; i++) {
+        const currentAction = consolidatedChanges[i].action;
+        const consolidatedVals = !isString ? consolidatedChanges[i].val : consolidatedChanges[i].val.split(" ");
+        let startingPos = consolidatedChanges[i].pos;
+        for (let j = 0; j < consolidatedVals.length; j++) {
+            changes.push(changeStruct(currentAction, startingPos, consolidatedVals[j]));
+            startingPos++;
+        }
+    }
+    return changes;
+}
+
+exports.getDiff = function (originalVar, changedVar) {
+    if (originalVar === undefined) {
+        return [
+            changeStruct(ActionValueCompleteInsertion, 0, "")
+        ];
+    }
+    if (changedVar === undefined || !typeFunctions.compareTypes(originalVar, changedVar)) {
+        return [
+            changeStruct(ActionValueCompleteDeletion, 0, originalVar)
+        ];
+    }
+    if (typeFunctions.isArray(originalVar)) {
+        return consolidateDiff(mayersDiff(originalVar, changedVar), false);
+    }
+    if (typeFunctions.isString(originalVar)) {
+        return consolidateDiff(mayersDiff(originalVar.split(" "), changedVar.split(" ")), true);
+    }
+    return [
+        changeStruct(ActionValueCompleteDeletion, 0, originalVar)
+    ];
+};
+
+exports.patchDiff = function (changedVal, changes) {
+    if (!(changes && changes.length)) {
+        return patchStruct([], ErrorDiffInvalid);
+    }
+    for (let i = 0; i < changes.length; i++) {
+        if (!(changes[i].hasOwnProperty('action') && changes[i].hasOwnProperty('pos') && changes[i].hasOwnProperty('val'))) {
+            return patchStruct([], ErrorDiffInvalid);
+        }
+    }
+    if (changes[0].action === ActionValueCompleteDeletion) {
+        return patchStruct(changes[0].val, '');
+    }
+    if (changes[0].action === ActionValueCompleteInsertion) {
+        return patchStruct(undefined, '');
+    }
+    if (typeFunctions.isArray(changes[0].val)) {
+        if (!changedVal) {
+            changedVal = [];
+        }
+        return mayersPatch(changedVal, expandDiff(changes, false), false);
+    }
+    if (typeFunctions.isString(changes[0].val)) {
+        if (!changedVal) {
+            changedVal = '';
+        }
+        return mayersPatch(changedVal, expandDiff(changes, true), true);
+    }
+    return patchStruct([], ErrorDiffInvalid);
+};

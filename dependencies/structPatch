@@ -1,0 +1,67 @@
+const typeFunctions = require('./typeFunctions');
+const genericDiff = require('./genericDiff');
+
+const ErrorDiffInvalid = "diff data invalid";
+const ErrorChangedStructInvalid = "new version of the file invalid";
+
+var StructPatch = (function() {
+    function StructPatch(changedStruct, changes) {
+        this._changedStruct = changedStruct;
+        this._changes = changes;
+    }
+
+    function patchStruct (val, err) {
+        return {
+            val: val || {},
+            err: err || ''
+        }
+    }
+
+    function getStructDiffPatch(changedStruct, changes) {
+        const originalStruct = JSON.parse(JSON.stringify(changedStruct));
+        for (const key in changes) {
+            if (changes.hasOwnProperty(key)) {
+                if (typeFunctions.isObject(changes[key])) {
+                    if (!(originalStruct.hasOwnProperty(key) && originalStruct[key])) {
+                        originalStruct[key] = {};
+                    }
+                    const childObjPatch = getStructDiffPatch(originalStruct[key], changes[key]);
+                    if (childObjPatch.err) {
+                        return patchStruct({}, childObjPatch.err);
+                    }
+                    originalStruct[key] = childObjPatch.val;
+                    continue;
+                }
+                if (!typeFunctions.isArray(changes[key])) {
+                    return patchStruct({}, ErrorDiffInvalid);
+                }
+                const childPatch = genericDiff.patchDiff(originalStruct[key], changes[key]);
+                if (childPatch.error) {
+                    return patchStruct({}, childPatch.error);
+                }
+                console.log(childPatch);
+                console.log(key);
+                console.log(originalStruct[key]);
+                console.log(changes[key]);
+                console.log("*&&&&&&&&&");
+                if (childPatch.orignalVal === undefined) {
+                    delete originalStruct[key];
+                } else {
+                    originalStruct[key] = childPatch.orignalVal;
+                }
+            }
+        }
+        return patchStruct(originalStruct, '');
+    }
+
+    StructPatch.prototype.getStructPatch = function() {
+        if (!typeFunctions.isObject(this._changedStruct)) {
+            return patchStruct({}, ErrorChangedStructInvalid);
+        }
+        return getStructDiffPatch(this._changedStruct, this._changes);
+    };
+
+    return StructPatch;
+})();
+
+module.exports = StructPatch;

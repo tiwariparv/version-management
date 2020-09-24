@@ -1,0 +1,52 @@
+const typeFunctions = require('./typeFunctions');
+const genericDiff = require('./genericDiff');
+
+
+var StructDiff = (function() {
+    function StructDiff(orignalStruct, changedStruct) {
+        this._orignalStruct = orignalStruct;
+        this._changedStruct = changedStruct;
+    }
+
+
+    function getChangedFields(orignalStruct, changedStruct) {
+        const change = {};
+        for (const key in orignalStruct) {
+            if (orignalStruct.hasOwnProperty(key)) {
+                if (!changedStruct.hasOwnProperty(key)) {
+                    change[key] = genericDiff.getDiff(orignalStruct[key], undefined);
+                    continue;
+                }
+                if (typeFunctions.isObject(orignalStruct[key])) {
+                    const internalChanges = getChangedFields(orignalStruct[key], changedStruct[key]);
+                    if (!typeFunctions.isEmpty(internalChanges)) {
+                        change[key] = internalChanges;
+                    }
+                    continue;
+                }
+                if (orignalStruct[key] !== changedStruct[key]) {
+                    change[key] = genericDiff.getDiff(orignalStruct[key], changedStruct[key]);
+                }
+            }
+        }
+        for (const key in changedStruct) {
+            if (changedStruct.hasOwnProperty(key)) {
+                if (!orignalStruct.hasOwnProperty(key)) {
+                    change[key] = genericDiff.getDiff(undefined, changedStruct[key]);
+                }
+            }
+        }
+        return change;
+    }
+
+    StructDiff.prototype.getStructDiff = function() {
+        if (!typeFunctions.isObject(this._orignalStruct) || !typeFunctions.isObject(this._changedStruct)) {
+            return {};
+        }
+        return getChangedFields(this._orignalStruct, this._changedStruct);
+    };
+
+    return StructDiff;
+})();
+
+module.exports = StructDiff;

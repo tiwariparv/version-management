@@ -1,0 +1,205 @@
+/*
+	Reference : https://blog.jcoglan.com/2017/02/12/the-myers-diff-algorithm-part-1
+*/
+
+const MyersDiff = (function() {
+    function MyersDiff(orignalVal, changedVal) {
+        this._orignalVal = orignalVal;
+        this._changedVal = changedVal;
+    }
+
+    function changeStruct(type, pos, val) {
+        return {
+            type: type || '',
+            pos: pos || 0,
+            val: val || ''
+        };
+    }
+    function boxStruct(left, top, right, bottom) {
+        return {
+            left: left || 0,
+            top: top || 0,
+            right: right || 0,
+            bottom: bottom || 0
+        };
+    }
+    function xyStruct(x, y) {
+        return {
+            x: x || 0,
+            y: y || 0
+        };
+    }
+    function snakeStruct(from, to) {
+        return {
+            from: from || xyStruct(),
+            to: to || xyStruct()
+        }
+    }
+
+    MyersDiff.prototype._forwards = function (box, vf, vb, depth, maxDepth) {
+        let px, x, py, y;
+        const boxDelta = box.right - box.left - (box.bottom - box.top);
+        for (let k = -depth + maxDepth; k <= depth+maxDepth; k += 2) {
+            const c = k - boxDelta;
+            if (k === -depth+maxDepth || (k !== depth+maxDepth && vf[k-1] < vf[k+1])) {
+                px = vf[k+1];
+                x = vf[k+1];
+            } else {
+                px = vf[k-1];
+                x = px + 1;
+            }
+            y = box.top + (x - box.left) - (k - maxDepth);
+            if (depth === 0 || x !== px) {
+                py = y;
+            } else {
+                py = y - 1;
+            }
+            while (x < box.right && y < box.bottom && this._orignalVal[x] === this._changedVal[y]) {
+                x++;
+                y++;
+            }
+            vf[k] = x;
+            if ((Math.abs(boxDelta) % 2 === 1) && c >= -(depth-1)+maxDepth && c <= maxDepth+depth-1 && y >= vb[c]) {
+                return snakeStruct(
+                    xyStruct(px, py),
+                    xyStruct(x, y)
+                );
+            }
+        }
+        return undefined;
+    }
+    MyersDiff.prototype._backwards = function (box, vf, vb, depth, maxDepth) {
+        let px, x, py, y;
+        const boxDelta = box.right - box.left - (box.bottom - box.top);
+        for (let c = -depth + maxDepth; c <= depth+maxDepth; c += 2) {
+            const k = c + boxDelta;
+            if (c === -depth+maxDepth || (c !== depth+maxDepth && vb[c-1] > vb[c+1])) {
+                py = vb[c+1];
+                y = vb[c+1];
+            } else {
+                py = vb[c-1];
+                y = py - 1;
+            }
+            x = box.left + (y - box.top) + (k - maxDepth);
+            if (depth === 0 || y !== py) {
+                px = x;
+            } else {
+                px = x + 1;
+            }
+            while (x > box.left && y > box.top && this._orignalVal[x-1] === this._changedVal[y-1]) {
+                x = x-1;
+                y = y-1;
+            }
+            vb[c] = y;
+            if ((Math.abs(boxDelta) % 2 === 0) && k >= -depth+maxDepth && k <= depth+maxDepth && x <= vf[k]) {
+                return snakeStruct(
+                    xyStruct(x, y),
+                    xyStruct(px, py)
+                );
+            }
+        }
+        return undefined;
+    }
+
+    MyersDiff.prototype._midpoint = function (box) {
+        const boxSize = box.right - box.left + box.bottom - box.top;
+        if (boxSize === 0) {
+            return undefined;
+        }
+        const max = Math.ceil(boxSize/2);
+
+        const vf = new Array(2*max+1);
+        vf[max+1] = box.left;
+        const vb = new Array(2*max+1);
+        vb[max+1] = box.bottom;
+        for (let depth = 0; depth <= max; depth++) {
+            let snake = this._forwards(box, vf, vb, depth, max);
+            if (snake) {
+                return snake;
+            }
+            snake = this._backwards(box, vf, vb, depth, max);
+            if (snake) {
+                return snake;
+            }
+        }
+        return undefined;
+    };
+
+    MyersDiff.prototype._findPath = function (left, top, right, bottom) {
+        const box = boxStruct(left, top, right, bottom);
+        const snake = this._midpoint(box);
+        if (!snake) {
+            return undefined;
+        }
+
+        const head = this._findPath(box.left, box.top, snake.from.x, snake.from.y);
+        const tail = this._findPath(snake.to.x, snake.to.y, box.right, box.bottom);
+
+        let allSnakes = [];
+        if (!head) {
+            allSnakes.push(snake.from);
+        } else {
+            allSnakes.push(...head);
+        }
+        if (!tail) {
+            allSnakes.push(snake.to);
+        } else {
+            allSnakes.push(...tail);
+        }
+        return allSnakes
+    };
+
+    MyersDiff.prototype._walkDiagonal = function (start, end, fullPath) {
+        while(start.x < end.x && start.y < end.y && this._orignalVal[start.x] === this._changedVal[start.y]) {
+            fullPath.push(
+                snakeStruct(
+                    xyStruct(start.x, start.y),
+                    xyStruct(start.x + 1, start.y + 1)
+                )
+            );
+            start.x++;
+            start.y++;
+        }
+        return start;
+    };
+
+    MyersDiff.prototype._walkSnakes = function () {
+        const path = this._findPath(0, 0, this._orignalVal.length, this._changedVal.length);
+        const fullPath = [];
+        if (!path) {
+            return fullPath;
+        }
+        for (let it = 0; it < path.length - 1; it++) {
+            let start = path[it];
+            let end = path[it + 1];
+            start = this._walkDiagonal(start, end, fullPath);
+            if ((end.x - start.x) < (end.y - start.y)) {
+                fullPath.push(
+                    snakeStruct(
+                        xyStruct(start.x, start.y),
+                        xyStruct(start.x, start.y + 1)
+                    )
+                );
+                start.y++;
+            } else if ((end.x - start.x) > (end.y - start.y)) {
+                fullPath.push(
+                    snakeStruct(
+                        xyStruct(start.x, start.y),
+                        xyStruct(start.x + 1, start.y)
+                    )
+                );
+                start.x++;
+            }
+            start = this._walkDiagonal(start, end, fullPath);
+        }
+        return fullPath;
+    };
+
+    MyersDiff.prototype.diffPath = function() {
+        return this._walkSnakes();
+    };
+
+    return MyersDiff;
+})();
+
+module.exports = MyersDiff;

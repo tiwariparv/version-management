@@ -1,0 +1,25 @@
+{
+  "name": "@tiwariparv/version-management",
+  "version": "1.0.0",
+  "description": "Version Version management for structures",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tiwariparv/version-management.git"
+  },
+  "author": "Parv Tiwari",
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/tiwariparv"
+  },
+  "bugs": {
+    "url": "https://github.com/tiwariparv/version-management/issues"
+  },
+  "homepage": "https://github.com/tiwariparv/version-management#readme",
+  "dependencies": {
+    "npm": "^6.14.8"
+  }
+}

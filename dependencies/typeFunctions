@@ -1,16 +1,19 @@
+const _ = require('lodash');
+
 const TypeOfObject = "object";
 const TypeOfString = "string";
 
+
 exports.isObject = function(obj) {
-    return (typeof(obj) === TypeOfObject) && !Array.isArray(obj)
+    return _.isObject(obj) && !_.isArray(obj);
 };
 
 exports.isArray = function(arr) {
-    return Array.isArray(arr)
+    return _.isArray(arr)
 };
 
 exports.isString = function (str) {
-    return typeof(str) === TypeOfString;
+    return _.isString(str);
 };
 
 exports.compareTypes = function(var1, var2) {
@@ -29,9 +32,9 @@ exports.compareTypes = function(var1, var2) {
 };
 
 exports.isEmpty = function(obj) {
-    for(const key in obj) {
-        if(obj.hasOwnProperty(key))
-            return false;
-    }
-    return true;
+    return _.isEmpty(obj);
+};
+
+exports.compareValues = function (var1, var2) {
+    return _.isEqual(var1, var2);
 };

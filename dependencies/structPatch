@@ -37,13 +37,10 @@ var StructPatch = (function() {
                 }
                 const childPatch = genericDiff.patchDiff(originalStruct[key], changes[key]);
                 if (childPatch.error) {
+                    console.log(originalStruct[key]);
+                    console.log(key);
                     return patchStruct({}, childPatch.error);
                 }
-                console.log(childPatch);
-                console.log(key);
-                console.log(originalStruct[key]);
-                console.log(changes[key]);
-                console.log("*&&&&&&&&&");
                 if (childPatch.orignalVal === undefined) {
                     delete originalStruct[key];
                 } else {

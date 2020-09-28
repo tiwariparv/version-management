@@ -57,10 +57,11 @@ function mayersPatch(changedVal, changes, isString) {
         if (change.action === ActionValueInsertion) {
             numberOfInsertions++;
             insertionsPositionMap[change.pos] = true;
-            if (change.pos >= changedVal.length || changedVal[change.pos] !== change.val) {
+            if (change.pos >= changedVal.length || !typeFunctions.compareValues(changedVal[change.pos], change.val)) {
                 console.log("5");
+                console.log(typeFunctions.compareValues(changedVal[change.pos], change.val));
                 console.log(change);
-                console.log(changedVal);
+                console.log(changedVal[change.pos]);
 
                 return patchStruct([], ErrorDiffInvalid);
             }
@@ -155,10 +156,14 @@ exports.getDiff = function (originalVar, changedVar) {
 
 exports.patchDiff = function (changedVal, changes) {
     if (!(changes && changes.length)) {
+        console.log(changedVal);
+        console.log(changes);
+        console.log("1");
         return patchStruct([], ErrorDiffInvalid);
     }
     for (let i = 0; i < changes.length; i++) {
         if (!(changes[i].hasOwnProperty('action') && changes[i].hasOwnProperty('pos') && changes[i].hasOwnProperty('val'))) {
+            console.log("2");
             return patchStruct([], ErrorDiffInvalid);
         }
     }

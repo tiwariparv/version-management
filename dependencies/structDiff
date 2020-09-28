@@ -24,7 +24,10 @@ var StructDiff = (function() {
                     }
                     continue;
                 }
-                if (orignalStruct[key] !== changedStruct[key]) {
+                // if (typeFunctions.isArray(orignalStruct[key]) && orignalStruct[key].length > 0 && typeFunctions.isObject(orignalStruct[key][0])) {
+                //
+                // }
+                if (!typeFunctions.compareValues(orignalStruct[key], changedStruct[key])) {
                     change[key] = genericDiff.getDiff(orignalStruct[key], changedStruct[key]);
                 }
             }

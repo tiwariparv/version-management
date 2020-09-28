@@ -1,4 +1,3 @@
-const typeFunctions = require('./dependencies/typeFunctions');
 const structDiff = require('./dependencies/structDiff');
 const structPatch = require('./dependencies/structPatch');
 

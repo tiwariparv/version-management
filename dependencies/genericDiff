@@ -57,7 +57,9 @@ function mayersPatch(changedVal, changes, isString) {
         if (change.action === ActionValueInsertion) {
             numberOfInsertions++;
             insertionsPositionMap[change.pos] = true;
-            if (change.pos >= changedVal.length || !typeFunctions.compareValues(changedVal[change.pos], change.val)) {
+            // todo : add compatibility for dates in typeFunctions.compareValues
+            // if (change.pos >= changedVal.length || !typeFunctions.compareValues(changedVal[change.pos], change.val)) {
+            if (change.pos >= changedVal.length) {
                 console.log("5");
                 console.log(typeFunctions.compareValues(changedVal[change.pos], change.val));
                 console.log(change);

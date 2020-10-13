@@ -19,6 +19,19 @@ var StructPatch = (function() {
 
     function getStructDiffPatch(changedStruct, changes) {
         const originalStruct = JSON.parse(JSON.stringify(changedStruct));
+        for (const key in originalStruct) {
+            if (originalStruct.hasOwnProperty(key)) {
+                if (typeFunctions.isArray(originalStruct[key]) &&
+                    originalStruct[key].length > 0 &&
+                    typeFunctions.isObject(originalStruct[key][0])) {
+                    for (let it = 0; it < originalStruct[key].length; it++) {
+                        const objKey = key + "." + it;
+                        originalStruct[objKey] = originalStruct[key][it]
+                    }
+                    delete originalStruct[key];
+                }
+            }
+        }
         for (const key in changes) {
             if (changes.hasOwnProperty(key)) {
                 if (typeFunctions.isObject(changes[key])) {
@@ -33,6 +46,9 @@ var StructPatch = (function() {
                     continue;
                 }
                 if (!typeFunctions.isArray(changes[key])) {
+                    console.log("@@#!@#@");
+                    console.log(changes[key]);
+                    console.log(key);
                     return patchStruct({}, ErrorDiffInvalid);
                 }
                 const childPatch = genericDiff.patchDiff(originalStruct[key], changes[key]);
@@ -46,6 +62,30 @@ var StructPatch = (function() {
                 } else {
                     originalStruct[key] = childPatch.orignalVal;
                 }
+            }
+        }
+        const arrayKeysData = {};
+        const arrayFieldRegex = /\.[0-9]/;
+        for (const key in originalStruct) {
+            if (originalStruct.hasOwnProperty(key)) {
+                const index = key.search(arrayFieldRegex);
+                if (index !== -1) {
+                    const originalKey = key.substr(0, index);
+                    if (!arrayKeysData.hasOwnProperty(originalKey)) {
+                        arrayKeysData[originalKey] = {};
+                    }
+                    const originalKeyIndex = key.substr(index + 1);
+                    arrayKeysData[originalKey][originalKeyIndex] = originalStruct[key];
+                    delete originalStruct[key];
+                }
+            }
+        }
+        for (const key in arrayKeysData) {
+            let it = 0;
+            originalStruct[key] = [];
+            while (arrayKeysData[key].hasOwnProperty(it.toString())) {
+                originalStruct[key].push(arrayKeysData[key][it.toString()]);
+                it++;
             }
         }
         return patchStruct(originalStruct, '');

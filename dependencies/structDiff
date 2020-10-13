@@ -24,9 +24,33 @@ var StructDiff = (function() {
                     }
                     continue;
                 }
-                // if (typeFunctions.isArray(orignalStruct[key]) && orignalStruct[key].length > 0 && typeFunctions.isObject(orignalStruct[key][0])) {
-                //
-                // }
+                if (typeFunctions.isArray(orignalStruct[key]) &&
+                    orignalStruct[key].length > 0 &&
+                    typeFunctions.isObject(orignalStruct[key][0]) &&
+                    typeFunctions.isArray(changedStruct[key]) &&
+                    changedStruct[key].length > 0 &&
+                    typeFunctions.isObject(changedStruct[key][0])) {
+                    for (let it = 0; it < orignalStruct[key].length; it++) {
+                        if (changedStruct[key].length > it) {
+                            const objKey = key + "." + it;
+                            if (!typeFunctions.compareValues(orignalStruct[key][it], changedStruct[key][it])) {
+                                change[objKey] = getChangedFields(orignalStruct[key][it], changedStruct[key][it]);
+                            }
+                        }
+                    }
+                    if (changedStruct[key].length > orignalStruct[key].length) {
+                        for (let it = orignalStruct[key].length; it < changedStruct[key].length; it++) {
+                            const objKey = key + "." + it;
+                            change[objKey] = genericDiff.getDiff(undefined, changedStruct[key][it]);
+                        }
+                    } else if (changedStruct[key].length < orignalStruct[key].length) {
+                        for (let it = changedStruct[key].length; it < orignalStruct[key].length; it++) {
+                            const objKey = key + "." + it;
+                            change[objKey] = genericDiff.getDiff(changedStruct[key][it], undefined);
+                        }
+                    }
+                    continue;
+                }
                 if (!typeFunctions.compareValues(orignalStruct[key], changedStruct[key])) {
                     change[key] = genericDiff.getDiff(orignalStruct[key], changedStruct[key]);
                 }

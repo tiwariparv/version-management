@@ -3,22 +3,32 @@ const genericDiff = require('./genericDiff');
 
 
 var StructDiff = (function() {
-    function StructDiff(orignalStruct, changedStruct) {
+    function StructDiff(orignalStruct, changedStruct, filter) {
         this._orignalStruct = orignalStruct;
         this._changedStruct = changedStruct;
+        this._filter = filter || {};
     }
 
 
-    function getChangedFields(orignalStruct, changedStruct) {
+    function getChangedFields(orignalStruct, changedStruct, filter) {
         const change = {};
+        let isFilterApplied = false;
+        if (filter && typeFunctions.isObject(filter) && !typeFunctions.isEmpty(filter)) {
+            isFilterApplied = true;
+        }
         for (const key in orignalStruct) {
-            if (orignalStruct.hasOwnProperty(key)) {
+            if (orignalStruct.hasOwnProperty(key) &&
+                (
+                    !isFilterApplied ||
+                    (isFilterApplied && filter.hasOwnProperty(key) && filter[key])
+                )
+            ) {
                 if (!changedStruct.hasOwnProperty(key)) {
                     change[key] = genericDiff.getDiff(orignalStruct[key], undefined);
                     continue;
                 }
                 if (typeFunctions.isObject(orignalStruct[key])) {
-                    const internalChanges = getChangedFields(orignalStruct[key], changedStruct[key]);
+                    const internalChanges = getChangedFields(orignalStruct[key], changedStruct[key], filter[key]);
                     if (!typeFunctions.isEmpty(internalChanges)) {
                         change[key] = internalChanges;
                     }
@@ -34,7 +44,7 @@ var StructDiff = (function() {
                         if (changedStruct[key].length > it) {
                             const objKey = key + "." + it;
                             if (!typeFunctions.compareValues(orignalStruct[key][it], changedStruct[key][it])) {
-                                change[objKey] = getChangedFields(orignalStruct[key][it], changedStruct[key][it]);
+                                change[objKey] = getChangedFields(orignalStruct[key][it], changedStruct[key][it], {});
                             }
                         }
                     }
@@ -57,7 +67,12 @@ var StructDiff = (function() {
             }
         }
         for (const key in changedStruct) {
-            if (changedStruct.hasOwnProperty(key)) {
+            if (changedStruct.hasOwnProperty(key) &&
+                (
+                    !isFilterApplied ||
+                    (isFilterApplied && filter.hasOwnProperty(key) && filter[key])
+                )
+            ) {
                 if (!orignalStruct.hasOwnProperty(key)) {
                     change[key] = genericDiff.getDiff(undefined, changedStruct[key]);
                 }
@@ -70,7 +85,7 @@ var StructDiff = (function() {
         if (!typeFunctions.isObject(this._orignalStruct) || !typeFunctions.isObject(this._changedStruct)) {
             return {};
         }
-        return getChangedFields(this._orignalStruct, this._changedStruct);
+        return getChangedFields(this._orignalStruct, this._changedStruct, this._filter);
     };
 
     return StructDiff;

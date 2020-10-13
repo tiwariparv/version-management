@@ -5,8 +5,8 @@ const structPatch = require('./dependencies/structPatch');
 var VersionManagement = (function() {
     function VersionManagement() {}
 
-    VersionManagement.prototype.structDiff = function(orignalStruct, changedStruct) {
-        const diff = new structDiff(orignalStruct, changedStruct);
+    VersionManagement.prototype.structDiff = function(orignalStruct, changedStruct, filter) {
+        const diff = new structDiff(orignalStruct, changedStruct, filter);
         return diff.getStructDiff();
     };
 

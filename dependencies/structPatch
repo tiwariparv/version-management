@@ -4,12 +4,17 @@ const genericDiff = require('./genericDiff');
 const ErrorDiffInvalid = "diff data invalid";
 const ErrorChangedStructInvalid = "new version of the file invalid";
 
+/**
+ * Summary. Class to find the original object from changed json and diff
+ */
 var StructPatch = (function() {
+    // init
     function StructPatch(changedStruct, changes) {
         this._changedStruct = changedStruct;
         this._changes = changes;
     }
 
+    // return structure - val : the original object, err : error if any
     function patchStruct (val, err) {
         return {
             val: val || {},
@@ -17,8 +22,12 @@ var StructPatch = (function() {
         }
     }
 
+    // recursive function to find whole of the original object
     function getStructDiffPatch(changedStruct, changes) {
+        // copy changed object
         const originalStruct = JSON.parse(JSON.stringify(changedStruct));
+        // iterate through all the keys of originalStruct and find which are of the type array of objects
+        // change these keys into the format "keys.0", "keys.1", etc
         for (const key in originalStruct) {
             if (originalStruct.hasOwnProperty(key)) {
                 if (typeFunctions.isArray(originalStruct[key]) &&
@@ -32,8 +41,10 @@ var StructPatch = (function() {
                 }
             }
         }
+        // iterate through all the keys of diff object
         for (const key in changes) {
             if (changes.hasOwnProperty(key)) {
+                // if key is of the type Object: recursively call getStructDiffPatch of getting child data
                 if (typeFunctions.isObject(changes[key])) {
                     if (!(originalStruct.hasOwnProperty(key) && originalStruct[key])) {
                         originalStruct[key] = {};
@@ -45,25 +56,25 @@ var StructPatch = (function() {
                     originalStruct[key] = childObjPatch.val;
                     continue;
                 }
+                // values of keys in diff obejct cannot be anything other than Object or Array
                 if (!typeFunctions.isArray(changes[key])) {
-                    console.log("@@#!@#@");
-                    console.log(changes[key]);
-                    console.log(key);
                     return patchStruct({}, ErrorDiffInvalid);
                 }
+                // find the original key value
                 const childPatch = genericDiff.patchDiff(originalStruct[key], changes[key]);
                 if (childPatch.error) {
-                    console.log(originalStruct[key]);
-                    console.log(key);
                     return patchStruct({}, childPatch.error);
                 }
-                if (childPatch.orignalVal === undefined) {
+                if (childPatch.originalVal === undefined) {
                     delete originalStruct[key];
                 } else {
-                    originalStruct[key] = childPatch.orignalVal;
+                    originalStruct[key] = childPatch.originalVal;
                 }
             }
         }
+        // the keys of originalStruct which were of the type array of objects
+        // after finding original values of individual objects inside the array
+        // patch it back into a array of objects
         const arrayKeysData = {};
         const arrayFieldRegex = /\.[0-9]/;
         for (const key in originalStruct) {
@@ -91,6 +102,7 @@ var StructPatch = (function() {
         return patchStruct(originalStruct, '');
     }
 
+    // main function called from here
     StructPatch.prototype.getStructPatch = function() {
         if (!typeFunctions.isObject(this._changedStruct)) {
             return patchStruct({}, ErrorChangedStructInvalid);

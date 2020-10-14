@@ -3,19 +3,17 @@
 */
 const typeFunctions = require('./typeFunctions');
 
+/**
+ * Summary. Class to find the mayers diff using linear space
+ */
 const MyersDiff = (function() {
-    function MyersDiff(orignalVal, changedVal) {
-        this._orignalVal = orignalVal;
+    // init
+    function MyersDiff(originalVal, changedVal) {
+        this._originalVal = originalVal;
         this._changedVal = changedVal;
     }
 
-    function changeStruct(type, pos, val) {
-        return {
-            type: type || '',
-            pos: pos || 0,
-            val: val || ''
-        };
-    }
+    // box structure
     function boxStruct(left, top, right, bottom) {
         return {
             left: left || 0,
@@ -24,12 +22,14 @@ const MyersDiff = (function() {
             bottom: bottom || 0
         };
     }
+    // xy structure
     function xyStruct(x, y) {
         return {
             x: x || 0,
             y: y || 0
         };
     }
+    // snake structure
     function snakeStruct(from, to) {
         return {
             from: from || xyStruct(),
@@ -37,6 +37,7 @@ const MyersDiff = (function() {
         }
     }
 
+    // function the find the snake going down from top left corner of the box
     MyersDiff.prototype._forwards = function (box, vf, vb, depth, maxDepth) {
         let px, x, py, y;
         const boxDelta = box.right - box.left - (box.bottom - box.top);
@@ -55,7 +56,7 @@ const MyersDiff = (function() {
             } else {
                 py = y - 1;
             }
-            while (x < box.right && y < box.bottom && typeFunctions.compareValues(this._orignalVal[x], this._changedVal[y])) {
+            while (x < box.right && y < box.bottom && typeFunctions.compareValues(this._originalVal[x], this._changedVal[y])) {
                 x++;
                 y++;
             }
@@ -68,7 +69,8 @@ const MyersDiff = (function() {
             }
         }
         return undefined;
-    }
+    };
+    // function the find the snake going up from bottom right corner of the box
     MyersDiff.prototype._backwards = function (box, vf, vb, depth, maxDepth) {
         let px, x, py, y;
         const boxDelta = box.right - box.left - (box.bottom - box.top);
@@ -87,7 +89,7 @@ const MyersDiff = (function() {
             } else {
                 px = x + 1;
             }
-            while (x > box.left && y > box.top && typeFunctions.compareValues(this._orignalVal[x-1], this._changedVal[y-1])) {
+            while (x > box.left && y > box.top && typeFunctions.compareValues(this._originalVal[x-1], this._changedVal[y-1])) {
                 x = x-1;
                 y = y-1;
             }
@@ -100,8 +102,9 @@ const MyersDiff = (function() {
             }
         }
         return undefined;
-    }
+    };
 
+    // function to finc the middle snake in a box
     MyersDiff.prototype._midpoint = function (box) {
         const boxSize = box.right - box.left + box.bottom - box.top;
         if (boxSize === 0) {
@@ -113,6 +116,7 @@ const MyersDiff = (function() {
         vf[max+1] = box.left;
         const vb = new Array(2*max+1);
         vb[max+1] = box.bottom;
+        // todo: can optimize better to have more insertions and deletions together
         for (let depth = 0; depth <= max; depth++) {
             let snake = this._forwards(box, vf, vb, depth, max);
             if (snake) {
@@ -126,6 +130,7 @@ const MyersDiff = (function() {
         return undefined;
     };
 
+    // find all the snakes using linear space
     MyersDiff.prototype._findPath = function (left, top, right, bottom) {
         const box = boxStruct(left, top, right, bottom);
         const snake = this._midpoint(box);
@@ -151,7 +156,7 @@ const MyersDiff = (function() {
     };
 
     MyersDiff.prototype._walkDiagonal = function (start, end, fullPath) {
-        while(start.x < end.x && start.y < end.y && typeFunctions.compareValues(this._orignalVal[start.x], this._changedVal[start.y])) {
+        while(start.x < end.x && start.y < end.y && typeFunctions.compareValues(this._originalVal[start.x], this._changedVal[start.y])) {
             fullPath.push(
                 snakeStruct(
                     xyStruct(start.x, start.y),
@@ -164,8 +169,9 @@ const MyersDiff = (function() {
         return start;
     };
 
+    // finding the complete diff path using all the snakes
     MyersDiff.prototype._walkSnakes = function () {
-        const path = this._findPath(0, 0, this._orignalVal.length, this._changedVal.length);
+        const path = this._findPath(0, 0, this._originalVal.length, this._changedVal.length);
         const fullPath = [];
         if (!path) {
             return fullPath;
@@ -196,6 +202,7 @@ const MyersDiff = (function() {
         return fullPath;
     };
 
+    // main function to call for finding diff
     MyersDiff.prototype.diffPath = function() {
         return this._walkSnakes();
     };
